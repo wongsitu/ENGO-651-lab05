@@ -8,4 +8,5 @@ export default defineConfig({
   define: {
     'process.env': {},
   },
+  base: '/ENGO-651-lab05/',
 });
