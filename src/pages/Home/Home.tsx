@@ -42,10 +42,15 @@ const Home = () => {
   const host = connectionFormMethods.watch('host');
   const port = connectionFormMethods.watch('port');
   const topic = topicFormMethods.watch('topic');
-  const clientId = `${Math.random() * 10000}`;
   const client = useMemo(
-    () => new Paho.MQTT.Client(host, Number(port), clientId),
-    [host, port, clientId],
+    () =>
+      new Paho.MQTT.Client(
+        import.meta.env.PROD
+          ? `wss://${host}:${port}/mqtt`
+          : `ws://${host}:${port}/mqtt`,
+        `${Math.random() * 10000}`,
+      ),
+    [host, port],
   );
 
   client.onConnectionLost = () => {
