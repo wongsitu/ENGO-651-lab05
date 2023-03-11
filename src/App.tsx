@@ -7,7 +7,7 @@ import queryClient from './services/queryClient';
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
+      <Router basename="/ENGO-651-lab05/">
         <Pages />
       </Router>
     </QueryClientProvider>
