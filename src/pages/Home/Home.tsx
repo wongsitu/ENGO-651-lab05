@@ -1,13 +1,13 @@
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet'; // theme css file
 import { DateRange, Range } from 'react-date-range';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { useLocations } from '../../services/locations/locations';
 import { format } from '../../utils/format';
 import useDebounce from '../../hooks/useDebounce';
+import { client } from '../../utils/paho';
 
 const Home = () => {
-  const [showTrafficIncidents, setShowTrafficInicidents] = useState(false);
   const [state, setState] = useState<Range[]>([
     {
       startDate: new Date(),
@@ -26,6 +26,44 @@ const Home = () => {
       ? format(debouncedState[0].endDate, 'YYYY-MM-DD')
       : undefined,
   });
+
+  const onConnectionLost: Paho.MQTT.OnConnectionLostHandler = (
+    responseObject,
+  ) => {
+    if (responseObject.errorCode !== 0) {
+      console.log(`onConnectionLost:${responseObject.errorMessage}`);
+    }
+  };
+
+  const onMessageArrived: Paho.MQTT.OnMessageHandler = (message) => {
+    console.log(`onMessageArrived:${message.payloadString}`);
+  };
+
+  const onConnect: Paho.MQTT.OnSuccessCallback = () => {
+    console.log('onConnect');
+    client.subscribe('World');
+    const message = new Paho.MQTT.Message('Hello');
+
+    message.destinationName = 'World';
+    client.send(message);
+  };
+
+  useEffect(() => {
+    try {
+      client.connect({
+        onSuccess: onConnect,
+      });
+
+      client.onConnectionLost = onConnectionLost;
+      client.onMessageArrived = onMessageArrived;
+    } catch (err) {
+      console.error(err);
+    }
+
+    return () => {
+      client.disconnect();
+    };
+  }, []);
 
   return (
     <div className="relative">
@@ -56,12 +94,7 @@ const Home = () => {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {showTrafficIncidents && (
-            <TileLayer
-              attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> <strong><a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a></strong>'
-              url="https://api.mapbox.com/styles/v1/wongsitu/clenl5gww000501ptpyjwe8mw/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1Ijoid29uZ3NpdHUiLCJhIjoiY2xlZXhtOGk1MDVzZDN0cG10a2x1NjUxMCJ9.hFkKaWzhPkDlzmcDSBKj-w"
-            />
-          )}
+
           <MarkerClusterGroup chunkedLoading>
             {locations.map((el, idx) =>
               el.properties.latitude && el.properties.longitude ? (
