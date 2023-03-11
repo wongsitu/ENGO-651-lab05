@@ -1,101 +1,100 @@
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet'; // theme css file
 import { DateRange, Range } from 'react-date-range';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MarkerClusterGroup from 'react-leaflet-cluster';
+import { FormProvider, SubmitHandler, useForm } from 'react-hook-form';
 import { useLocations } from '../../services/locations/locations';
 import { format } from '../../utils/format';
 import useDebounce from '../../hooks/useDebounce';
-import { client } from '../../utils/paho';
+import ConnectionForm from './ConnectionForm';
+import TopicForm from './TopicForm';
+import Tabs from './Tabs';
+import MessageForm from './MessageForm';
 
 const Home = () => {
-  const [state, setState] = useState<Range[]>([
-    {
-      startDate: new Date(),
-      endDate: undefined,
-      key: 'selection',
+  const [isConnected, setIsConnected] = useState(false);
+  const [messages, setMessages] = useState<string[]>([]);
+  const [currentTab, setCurrentTab] = useState<'CONNECT' | 'MESSAGES'>(
+    'CONNECT',
+  );
+  const connectionFormMethods = useForm({
+    mode: 'onChange',
+    defaultValues: {
+      host: 'test.mosquitto.org',
+      port: 8081,
     },
-  ]);
-  const debouncedState = useDebounce(state);
-
-  const position = { lat: 51.0447, lng: -114.0719 };
-  const { locations } = useLocations({
-    startDate: debouncedState[0].startDate
-      ? format(debouncedState[0].startDate, 'YYYY-MM-DD')
-      : undefined,
-    endDate: debouncedState[0].endDate
-      ? format(debouncedState[0].endDate, 'YYYY-MM-DD')
-      : undefined,
+  });
+  const topicFormMethods = useForm({
+    mode: 'onChange',
+    defaultValues: {
+      topic: 'ENGO651/Waika',
+    },
+  });
+  const messageFormMethods = useForm({
+    mode: 'onChange',
+    defaultValues: {
+      message: '',
+    },
   });
 
-  const onConnectionLost: Paho.MQTT.OnConnectionLostHandler = (
-    responseObject,
-  ) => {
-    if (responseObject.errorCode !== 0) {
-      console.log(`onConnectionLost:${responseObject.errorMessage}`);
-    }
+  const position = { lat: 51.0447, lng: -114.0719 };
+
+  const host = connectionFormMethods.watch('host');
+  const port = connectionFormMethods.watch('port');
+  const topic = topicFormMethods.watch('topic');
+  const clientId = `${Math.random() * 10000}`;
+  const client = useMemo(
+    () => new Paho.MQTT.Client(host, Number(port), clientId),
+    [host, port, clientId],
+  );
+
+  client.onConnectionLost = () => {
+    setIsConnected(false);
+    setCurrentTab('CONNECT');
   };
-
-  const onMessageArrived: Paho.MQTT.OnMessageHandler = (message) => {
-    console.log(`onMessageArrived:${message.payloadString}`);
+  client.onMessageArrived = (message) => {
+    setMessages((state) => [...state, message.payloadString]);
   };
-
-  const onConnect: Paho.MQTT.OnSuccessCallback = () => {
-    console.log('onConnect');
-    client.subscribe('World');
-    const message = new Paho.MQTT.Message('Hello');
-
-    message.destinationName = 'World';
-    client.send(message);
-  };
-
-  useEffect(() => {
-    try {
-      client.connect({
-        onSuccess: onConnect,
-      });
-
-      client.onConnectionLost = onConnectionLost;
-      client.onMessageArrived = onMessageArrived;
-    } catch (err) {
-      console.error(err);
-    }
-
-    return () => {
-      client.disconnect();
-    };
-  }, []);
 
   return (
     <div className="relative">
-      <div
-        className="absolute p-4 bg-white top-0 right-0 flex flex-col justify-center"
-        style={{ zIndex: 999 }}
-      >
-        <DateRange
-          editableDateInputs
-          onChange={(item) => setState([item.selection])}
-          moveRangeOnFirstSelection={false}
-          ranges={state}
-          maxDate={new Date()}
+      <div className="p-4 absolute top-0 left-0 right-0 z-[9999] bg-white">
+        <Tabs
+          currentTab={currentTab}
+          setCurrentTab={setCurrentTab}
+          isConnected={isConnected}
         />
-        {/* <button
-          type="button"
-          className="bg-white hover:bg-gray-100 text-gray-800 py-2 px-4 border border-gray-400 rounded shadow"
-          onClick={() => setShowTrafficInicidents((state) => !state)}
-        >
-          {showTrafficIncidents
-            ? 'Hide traffic incidents'
-            : 'Show traffic incidents'}
-        </button> */}
+        {currentTab === 'CONNECT' && (
+          <>
+            <FormProvider {...connectionFormMethods}>
+              <ConnectionForm
+                isConnected={isConnected}
+                client={client}
+                setIsConnected={setIsConnected}
+              />
+            </FormProvider>
+            {isConnected && (
+              <FormProvider {...topicFormMethods}>
+                <TopicForm client={client} />
+              </FormProvider>
+            )}
+          </>
+        )}
+        {currentTab === 'MESSAGES' && (
+          <FormProvider {...messageFormMethods}>
+            <MessageForm client={client} topic={topic} messages={messages} />
+          </FormProvider>
+        )}
       </div>
-      <div>
+
+      <div className="h-screen">
         <MapContainer center={position} zoom={13}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          <MarkerClusterGroup chunkedLoading>
+          {/* <MarkerClusterGroup chunkedLoading>
             {locations.map((el, idx) =>
               el.properties.latitude && el.properties.longitude ? (
                 <Marker
@@ -116,7 +115,7 @@ const Home = () => {
                 </Marker>
               ) : null,
             )}
-          </MarkerClusterGroup>
+          </MarkerClusterGroup> */}
         </MapContainer>
       </div>
     </div>
