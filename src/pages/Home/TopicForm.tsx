@@ -1,18 +1,20 @@
-import { FC } from 'react';
+import { Dispatch, FC, SetStateAction } from 'react';
 import { SubmitHandler, useFormContext } from 'react-hook-form';
 
 type FormData = {
   topic: string;
 };
 
-const TopicForm: FC<{ client: Paho.MQTT.Client | undefined }> = ({
-  client,
-}) => {
+const TopicForm: FC<{
+  client: Paho.MQTT.Client | undefined;
+  setSubcribed: Dispatch<SetStateAction<boolean>>;
+}> = ({ client, setSubcribed }) => {
   const { register, formState, handleSubmit } = useFormContext<FormData>();
 
   const onSubmit: SubmitHandler<FormData> = (data) => {
     if (client) {
       client.subscribe(data.topic);
+      setSubcribed(true);
     }
   };
 

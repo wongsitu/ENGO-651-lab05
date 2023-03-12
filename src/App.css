@@ -28,3 +28,11 @@
   height: 100%;
   width: 100%;
 }
+
+.red-marker .leaflet-marker-icon {
+  background-color: red;
+}
+
+.green-marker .leaflet-marker-icon {
+  background-color: red;
+}
