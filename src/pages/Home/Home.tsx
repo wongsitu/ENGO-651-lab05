@@ -52,7 +52,7 @@ const blueMarker = new L.Icon({
 });
 
 const Home = () => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [subscribed, setSubcribed] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<

@@ -9,7 +9,7 @@ type FormData = {
 const ConnectionForm: FC<{
   isConnected: boolean;
   client: Paho.MQTT.Client;
-  setIsConnected: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsConnected: Dispatch<SetStateAction<boolean>>;
 }> = ({ isConnected, client, setIsConnected }) => {
   const { register, formState, handleSubmit } = useFormContext<FormData>();
 
