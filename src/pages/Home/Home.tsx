@@ -1,9 +1,20 @@
+/* eslint-disable react/jsx-no-bind */
 /* eslint-disable no-nested-ternary */
-import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet'; // theme css file
-import L from 'leaflet';
-import { useMemo, useState } from 'react';
+import {
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMapEvents,
+  GeoJSON,
+  Polyline,
+} from 'react-leaflet';
+import L, { LatLng } from 'leaflet';
+import { useEffect, useMemo, useState } from 'react';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { FormProvider, useForm } from 'react-hook-form';
+import * as turf from '@turf/turf';
+import simplify from 'simplify-js';
 import ConnectionForm from './ConnectionForm';
 import TopicForm from './TopicForm';
 import Tabs from './Tabs';
@@ -51,17 +62,44 @@ const blueMarker = new L.Icon({
   className: 'green-marker',
 });
 
+function createLine(coords: [number, number][]): turf.Feature<turf.LineString> {
+  const pointCoords = coords.map(([lng, lat]) => ({ x: lng, y: lat }));
+  const simpleCoords = simplify(pointCoords, 0.0005, true);
+  const line = turf.lineString(simpleCoords.map((point) => [point.x, point.y]));
+
+  return line;
+}
+
+function MapClickHandler({
+  onClick,
+}: {
+  onClick: (coords: [number, number]) => void;
+}): null {
+  useMapEvents({
+    click(e: any) {
+      const { lat, lng } = e.latlng;
+
+      onClick([lng, lat]);
+    },
+  });
+  return null;
+}
+
 const Home = () => {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [lineFeature, setLineFeature] =
+    useState<turf.Feature<turf.LineString> | null>(null);
+  const [lineCoords, setLineCoords] = useState<[number, number][]>([]);
   const [subscribed, setSubcribed] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<
     { [key: string]: { message: string }[] } | undefined
   >(undefined);
   const [status, setStatus] = useState<StatusType[]>([]);
-  const [currentTab, setCurrentTab] = useState<
-    'CONNECT' | 'MESSAGES' | 'SHARE_STATUS'
-  >('CONNECT');
+  const [currentTab, setCurrentTab] = useState<'CONNECT' | 'MESSAGES' | 'DRAW'>(
+    'CONNECT',
+  );
   const connectionFormMethods = useForm({
     mode: 'onChange',
     defaultValues: {
@@ -115,6 +153,28 @@ const Home = () => {
       setStatus((state) => [...state, payload]);
     }
   };
+
+  function handleMapClick(e: any) {
+    const [lat, lng] = e;
+    const newCoords = [...lineCoords, [lat, lng]] as [number, number][];
+
+    setLineCoords(newCoords);
+  }
+
+  useEffect(() => {
+    if (lineCoords.length > 2) {
+      setLineFeature(createLine(lineCoords));
+      setOpen(true);
+    }
+  }, [lineCoords]);
+
+  useEffect(() => {
+    if (currentTab !== 'DRAW') {
+      setIsDrawing(false);
+    } else {
+      setIsDrawing(true);
+    }
+  }, [currentTab]);
 
   return (
     <div className="relative">
@@ -193,6 +253,35 @@ const Home = () => {
                 )}
               </>
             )}
+            {currentTab === 'DRAW' && (
+              <>
+                {lineFeature ? (
+                  <button
+                    type="submit"
+                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded w-full"
+                    onClick={() => {
+                      setLineFeature(null);
+                      setLineCoords([]);
+                      setOpen(false);
+                    }}
+                  >
+                    Delete Line
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="bg-gren-500 hover:bg-gren-700 text-white font-bold py-2 px-4 rounded w-full"
+                    onClick={() => {
+                      setLineFeature(null);
+                      setLineCoords([]);
+                      setIsDrawing(true);
+                    }}
+                  >
+                    Draw
+                  </button>
+                )}
+              </>
+            )}
           </>
         </Collapse>
       </div>
@@ -202,6 +291,14 @@ const Home = () => {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          {isDrawing && <MapClickHandler onClick={handleMapClick} />}
+          {lineCoords.length > 1 && isDrawing && (
+            <Polyline
+              positions={lineCoords.map(([lng, lat]) => new LatLng(lat, lng))}
+              color="red"
+            />
+          )}
+          {lineFeature && isDrawing && <GeoJSON data={lineFeature} />}
           <MarkerClusterGroup chunkedLoading>
             {status.map((el, idx) => (
               <Marker

@@ -4,10 +4,8 @@ import ArrowBottom from '../../icons/ArrowBottom';
 import ArrowTop from '../../icons/ArrowTop';
 
 type TabProps = {
-  currentTab: 'CONNECT' | 'MESSAGES' | 'SHARE_STATUS';
-  setCurrentTab: Dispatch<
-    SetStateAction<'CONNECT' | 'MESSAGES' | 'SHARE_STATUS'>
-  >;
+  currentTab: 'CONNECT' | 'MESSAGES' | 'DRAW';
+  setCurrentTab: Dispatch<SetStateAction<'CONNECT' | 'MESSAGES' | 'DRAW'>>;
   isConnected: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   open: boolean;
@@ -53,6 +51,20 @@ const Tabs: FC<TabProps> = ({
           </button>
         </li>
       )}
+      <li className="mr-2">
+        <button
+          type="button"
+          className={cn(
+            currentTab === 'DRAW'
+              ? 'text-blue-600 border-blue-600 active'
+              : 'border-transparent hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300',
+            'inline-block p-4 border-b-2 rounded-t-lg',
+          )}
+          onClick={() => setCurrentTab('DRAW')}
+        >
+          Draw
+        </button>
+      </li>
     </ul>
     <button
       type="button"
