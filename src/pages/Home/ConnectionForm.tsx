@@ -42,6 +42,7 @@ const ConnectionForm: FC<{
               id="host"
               type="text"
               placeholder="test.mosquitto.org"
+              disabled={isConnected}
             />
             {formState.errors.host?.message && (
               <p className="text-red-500 text-xs italic mt-1">
@@ -64,6 +65,7 @@ const ConnectionForm: FC<{
               id="port"
               type="number"
               placeholder="8081"
+              disabled={isConnected}
             />
             {formState.errors.port?.message && (
               <p className="text-red-500 text-xs italic mt-1">
