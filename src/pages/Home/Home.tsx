@@ -64,7 +64,8 @@ const blueMarker = new L.Icon({
 
 function createLine(coords: [number, number][]): turf.Feature<turf.LineString> {
   const pointCoords = coords.map(([lng, lat]) => ({ x: lng, y: lat }));
-  const simpleCoords = simplify(pointCoords, 0.0005, true);
+  const tolarance = 0.0005;
+  const simpleCoords = simplify(pointCoords, tolarance, true);
   const line = turf.lineString(simpleCoords.map((point) => [point.x, point.y]));
 
   return line;
